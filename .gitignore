@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+- logs/
+- outputs/
+- *.log
+- *.png
+data/
+- models/*.pth
