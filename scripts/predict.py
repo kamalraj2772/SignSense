@@ -18,7 +18,7 @@ MODEL_PATH = 'models/asl_cnn.pth'
 LABELS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ") + ['del', 'nothing', 'space']
 LOG_FILE = 'logs/prediction_log.txt'
 
-# --- Load Model ---
+# --- Load Model --
 def load_model(device):
     model = models.resnet18(weights=None)
     model.fc = nn.Linear(model.fc.in_features, len(LABELS))
