@@ -18,7 +18,7 @@ MODEL_PATH = 'models/asl_cnn.pth'
 LABELS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ") + ['del', 'nothing', 'space']
 LOG_FILE = 'logs/prediction_log.txt'
 
-# --- Load Model --
+# --- Load Model ---
 def load_model(device):
     model = models.resnet18(weights=None)
     model.fc = nn.Linear(model.fc.in_features, len(LABELS))
@@ -184,7 +184,7 @@ def main():
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
-        elif key == ord(' '):  # Speak full sentence
+        elif key == ord(' '):  # Speak  sentence
             if predicted_text.strip():
                 print(f"Speaking full sentence: {predicted_text}")
                 speak(predicted_text)
