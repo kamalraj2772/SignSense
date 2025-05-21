@@ -24,15 +24,13 @@ def load_model(device):
     model.to(device)
     model.eval()
     return model
-
-# --- Image Preprocessing ---
+    
 transform = transforms.Compose([
     transforms.ToPILImage(),
     transforms.Resize((64, 64)),
     transforms.ToTensor(),
 ])
 
-# --- Speak Text and Save Audio ---
 def speak(text, lang_code='en', filename='char.mp3'):
     if not text:
         return
@@ -46,19 +44,16 @@ def speak(text, lang_code='en', filename='char.mp3'):
     tts.save(save_path)
     print(f"[Info] Audio saved at: {save_path}")
 
-# --- Logging ---
 def log_prediction(label, confidence):
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     with open(LOG_FILE, 'a') as log_file:
         log_file.write(f"{datetime.now()} | Label: {label} | Confidence: {confidence:.2f}\n")
-
-# --- Majority Voting Helper ---
+        
 def majority_vote(deque_preds):
     if not deque_preds:
         return None
     return max(set(deque_preds), key=deque_preds.count)
 
-# --- Main Prediction Loop ---
 def main():
     print("Starting real-time sign language prediction with MediaPipe hands detection...")
     print("Press [q] to quit, [space] to speak full sentence, [c] to clear sentence, [m] to save sentence as audio.")
