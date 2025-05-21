@@ -119,7 +119,7 @@ with torch.no_grad():
         all_labels.extend(labels.numpy())
 
 final_acc = accuracy_score(all_labels, all_preds)
-print(f"\n✅ Final Test Accuracy: {final_acc * 100:.2f}%")
+print(f"\nFinal Test Accuracy: {final_acc * 100:.2f}%")
 
 plt.figure(figsize=(12, 5))
 
