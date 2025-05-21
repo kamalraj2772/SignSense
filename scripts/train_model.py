@@ -21,30 +21,24 @@ test_transforms = transforms.Compose([
     transforms.ToTensor()
 ])
 
-# Load datasets
 train_dataset = datasets.ImageFolder(train_dir, transform=train_transforms)
 test_dataset = datasets.ImageFolder(test_dir, transform=test_transforms)
 
-# Number of classes
 num_classes = len(train_dataset.classes)
 print(f"Detected {num_classes} classes: {train_dataset.classes}")
 
-# Data loaders
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-# Load model and replace the final layer
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = models.resnet18(pretrained=True)
 model.fc = nn.Linear(model.fc.in_features, num_classes)
 model = model.to(device)
 
-# Loss function and optimizer
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-# Training with early stopping
-num_epochs = 5
+num_epochs = 10
 patience = 5
 best_loss = float('inf')
 early_stop_counter = 0
@@ -78,7 +72,6 @@ for epoch in range(num_epochs):
     train_losses.append(train_loss)
     train_accuracies.append(train_acc)
 
-    # Validation phase
     model.eval()
     val_loss = 0.0
     val_correct, val_total = 0, 0
@@ -101,21 +94,18 @@ for epoch in range(num_epochs):
 
     print(f"Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_acc:.2f}%")
 
-    # Early stopping
     if val_loss < best_loss:
         best_loss = val_loss
         early_stop_counter = 0
-        torch.save(model.state_dict(), 'models/asl_cnn.pth')  # Save best model
+        torch.save(model.state_dict(), 'models/asl_cnn.pth') 
     else:
         early_stop_counter += 1
         if early_stop_counter >= patience:
             print("Early stopping triggered.")
             break
 
-# Load best model
 model.load_state_dict(torch.load('models/asl_cnn.pth'))
 
-# Final Evaluation
 model.eval()
 all_preds = []
 all_labels = []
@@ -131,10 +121,8 @@ with torch.no_grad():
 final_acc = accuracy_score(all_labels, all_preds)
 print(f"\n✅ Final Test Accuracy: {final_acc * 100:.2f}%")
 
-# Plotting
 plt.figure(figsize=(12, 5))
 
-# Loss plot
 plt.subplot(1, 2, 1)
 plt.plot(train_losses, label='Train Loss')
 plt.plot(val_losses, label='Validation Loss')
@@ -143,7 +131,6 @@ plt.xlabel("Epoch")
 plt.ylabel("Loss")
 plt.legend()
 
-# Accuracy plot
 plt.subplot(1, 2, 2)
 plt.plot(train_accuracies, label='Train Accuracy')
 plt.plot(val_accuracies, label='Validation Accuracy')

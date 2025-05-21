@@ -6,19 +6,17 @@ import cv2
 import numpy as np
 from gtts import gTTS
 import os
-import tempfile
-import pygame
 import time
 from collections import deque
 from datetime import datetime
-import mediapipe as mp  # add this package!
+import mediapipe as mp  
 
-# --- CONFIGURATION ---
+
 MODEL_PATH = 'models/asl_cnn.pth'
 LABELS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ") + ['del', 'nothing', 'space']
 LOG_FILE = 'logs/prediction_log.txt'
 
-# --- Load Model ---
+
 def load_model(device):
     model = models.resnet18(weights=None)
     model.fc = nn.Linear(model.fc.in_features, len(LABELS))
@@ -34,35 +32,23 @@ transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-# --- Speak Text ---
-def speak(text, lang_code='en'):
+# --- Speak Text and Save Audio ---
+def speak(text, lang_code='en', filename='char.mp3'):
     if not text:
         return
 
-    pygame.mixer.init()
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
-            temp_path = fp.name
-        tts = gTTS(text=text, lang=lang_code)
-        tts.save(temp_path)
+    output_path = os.path.join('outputs', 'audio')
+    os.makedirs(output_path, exist_ok=True)
 
-        pygame.mixer.music.load(temp_path)
-        pygame.mixer.music.play()
+    save_path = os.path.join(output_path, filename)
 
-        while pygame.mixer.music.get_busy():
-            pygame.time.Clock().tick(10)
-
-        pygame.mixer.music.unload()
-    finally:
-        pygame.mixer.quit()
-        if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except PermissionError:
-                print(f"[Warning] Could not delete temp file: {temp_path}")
+    tts = gTTS(text=text, lang=lang_code)
+    tts.save(save_path)
+    print(f"[Info] Audio saved at: {save_path}")
 
 # --- Logging ---
 def log_prediction(label, confidence):
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     with open(LOG_FILE, 'a') as log_file:
         log_file.write(f"{datetime.now()} | Label: {label} | Confidence: {confidence:.2f}\n")
 
@@ -75,7 +61,7 @@ def majority_vote(deque_preds):
 # --- Main Prediction Loop ---
 def main():
     print("Starting real-time sign language prediction with MediaPipe hands detection...")
-    print("Press [q] to quit, [space] to speak full sentence, [c] to clear sentence.")
+    print("Press [q] to quit, [space] to speak full sentence, [c] to clear sentence, [m] to save sentence as audio.")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
@@ -109,25 +95,20 @@ def main():
         if results.multi_hand_landmarks:
             hand_landmarks = results.multi_hand_landmarks[0]
 
-            # Get bounding box coordinates from hand landmarks
             h, w, _ = frame.shape
             x_coords = [lm.x for lm in hand_landmarks.landmark]
             y_coords = [lm.y for lm in hand_landmarks.landmark]
 
-            # Calculate bounding box in pixel coords with some padding
             xmin = int(max(min(x_coords) * w - 20, 0))
             xmax = int(min(max(x_coords) * w + 20, w))
             ymin = int(max(min(y_coords) * h - 20, 0))
             ymax = int(min(max(y_coords) * h + 20, h))
 
-            # Crop hand region as ROI
             roi = frame[ymin:ymax, xmin:xmax]
 
             if roi.size == 0:
-                # Sometimes bbox can be invalid; skip frame
                 continue
 
-            # Preprocess ROI and predict
             img = transform(roi).unsqueeze(0).to(device)
 
             with torch.no_grad():
@@ -163,19 +144,16 @@ def main():
                     log_prediction(smooth_label, confidence_val)
 
                     if smooth_label not in ['nothing', 'del']:
-                        speak(smooth_label)
+                        speak(smooth_label, filename='char.mp3')
 
-            # Draw bbox on original frame
             cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
             cv2.putText(frame, f"Prediction: {smooth_label}", (10, 50), cv2.FONT_HERSHEY_SIMPLEX,
                         1.2, (0, 255, 0), 2)
         else:
-            # No hand detected
             pred_buffer.append('nothing')
             cv2.putText(frame, "No hand detected", (10, 50), cv2.FONT_HERSHEY_SIMPLEX,
                         1.0, (0, 0, 255), 2)
 
-        # Show sentence
         cv2.putText(frame, f"Sentence: {predicted_text}", (10, 450), cv2.FONT_HERSHEY_SIMPLEX,
                     0.8, (0, 255, 255), 2)
 
@@ -184,14 +162,18 @@ def main():
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
-        elif key == ord(' '):  # Speak  sentence
+        elif key == ord(' '):  # Speak sentence
             if predicted_text.strip():
                 print(f"Speaking full sentence: {predicted_text}")
-                speak(predicted_text)
+                speak(predicted_text, filename='char.mp3')
                 predicted_text = ""
         elif key == ord('c'):  # Clear sentence
             print("Sentence cleared.")
             predicted_text = ""
+        elif key == ord('m'):  # Save sentence to full_sentence.mp3
+            if predicted_text.strip():
+                speak(predicted_text, filename='full_sentence.mp3')
+                print(f"Full sentence saved: '{predicted_text}'")
 
     cap.release()
     cv2.destroyAllWindows()
